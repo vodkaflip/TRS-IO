@@ -289,10 +289,24 @@ static void mongoose_event_handler(struct mg_connection* nc,
   }
 }
 
+static void init_mdns()
+{
+  // Start mDNS service
+  ESP_ERROR_CHECK(mdns_init());
+  ESP_ERROR_CHECK(mdns_hostname_set(MDNS_NAME));
+  ESP_ERROR_CHECK(mdns_instance_name_set(MDNS_NAME));
+  ESP_ERROR_CHECK(mdns_service_add("TRS-IO-WebServer", "_http",
+				   "_tcp", 80, NULL, 0));
+}
+
 static void mg_task(void* p)
 {
-  struct mg_mgr mgr;
+  static struct mg_mgr mgr;
 
+  evt_wait_wifi_up();
+  ESP_LOGI(TAG, "Starting Mongoose");
+  init_time();
+  init_mdns();
   config.ssid = NULL;
   config.passwd = NULL;
   config.tz = NULL;
@@ -301,34 +315,22 @@ static void mg_task(void* p)
   config.smb_passwd = NULL;
   copy_config_from_nvs();
 
-  // Start mDNS service
-  ESP_ERROR_CHECK(mdns_init());
-  ESP_ERROR_CHECK(mdns_hostname_set(MDNS_NAME));
-  mdns_service_add(NULL, "_http", "_tcp", 80, NULL, 0);
-
   // Start Mongoose
   mg_mgr_init(&mgr, NULL);
   struct mg_connection *c = mg_bind(&mgr, ":80", mongoose_event_handler);
   mg_set_protocol_http_websocket(c);
 
   while(true) {
+    vTaskDelay(1);
     mg_mgr_poll(&mgr, 1000);
   }
-}
-
-void start_mg(bool wait_for_wifi)
-{
-  if (wait_for_wifi) {
-    evt_wait_wifi_up();
-  }
-  xTaskCreatePinnedToCore(mg_task, "mg", 4000, NULL, 1, NULL, 0);
 }
 
 //--------------------------------------------------------------------------
 
 void wifi_init_ap()
 {
-  wifi_config_t wifi_config;
+  wifi_config_t wifi_config = {};
   
   strcpy((char*) wifi_config.ap.ssid, SSID);
   wifi_config.ap.ssid_len = strlen(SSID);
@@ -383,4 +385,5 @@ void init_wifi()
     set_led(false, true, true, true, false);
     wifi_init_ap();
   }
+  xTaskCreatePinnedToCore(mg_task, "mg", 6000, NULL, 1, NULL, 0);
 }
