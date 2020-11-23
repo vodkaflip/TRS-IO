@@ -6,7 +6,7 @@
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_task.h"
-#include "esp_event_loop.h"
+#include "esp_event.h"
 #include "spi.h"
 
 #define MCP23S_CHIP_ADDRESS 0x40
