@@ -1,7 +1,7 @@
 
 CC = sdcc
 AS = sdasz80
-LIB = sdcclib
+LIB = sdar -rc
 CFLAGS = -mz80 --std-sdcc99 --opt-code-size
 ASFLAGS = -l
 
